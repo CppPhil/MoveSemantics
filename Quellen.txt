@@ -1,5 +1,6 @@
 http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2002/n1377.htm
 https://meetingcpp.com/index.php/br/items/cpp-and-zombies-a-moving-question.html
+https://foonathan.github.io/blog/2016/07/23/move-safety.html
 https://akrzemi1.wordpress.com/2011/08/11/move-constructor/
 https://akrzemi1.wordpress.com/2011/06/10/using-noexcept/
 http://cppquiz.org/quiz/question/116
