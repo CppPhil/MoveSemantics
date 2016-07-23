@@ -490,3 +490,14 @@ paket-files/
 *.sln
 *.vcxproj
 *.vcxproj.filters
+
+### MS Word ###
+
+# Documents
+*.docx
+*.doc
+
+### Text files ###
+
+# Task
+Task.txt
