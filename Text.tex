@@ -1,0 +1,1468 @@
+%&pdfLaTeX
+% !TEX encoding = UTF-8 Unicode
+\documentclass{article}
+\usepackage{ifxetex}
+\ifxetex
+\usepackage{fontspec}
+\setmainfont[Mapping=tex-text]{STIXGeneral}
+\else
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\fi
+\usepackage{textcomp}
+
+\usepackage{array}
+\usepackage{ulem}
+\usepackage{amssymb}
+\usepackage{fancyhdr}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\begin{document}
+
+\baselineskip=12pt
+\emph{Inhaltsverzeichnis}
+
+\vspace{12pt}
+Abstract
+
+\vspace{12pt}
+Einleitung
+
+\vspace{12pt}
+Haupteil
+
+• Was ist ein Move?
+
+• Gefährliche und harmlose Moves
+
+• Value categories
+
+• Rvalue-Referenzen
+
+• Implizite Konvertierungen
+
+• Move-Konstruktoren
+
+• Move-Zuweisungsoperatoren
+
+• Von Lvalues moven
+
+• Xvalues
+
+• Aus Funktionen hinausmoven
+
+• In Datenmember hineinmoven
+
+• Spezielle Mitgliedsfunktionen
+
+• Forwarding references
+
+• Implementation von std::move
+
+• Perfect forwarding
+
+• Move-Sicherheit
+
+• Interaktion mit Standardbibliothekscontainern
+
+\vspace{12pt}
+Quellenangaben
+
+\vspace{129pt}
+\emph{Abstract }
+
+Folgendes Dokument erläutert die Move-Semantik in der C++-Programmiersprache, 
+welche seit dem C++11-Programmiersprachenstandard Teil der C++-Programmiersprache 
+ist.
+
+Dabei kommen Text, Codebeispiele, sowie Diagramme und Tabellen zur Erläuterung 
+zum Einsatz.
+
+Begonnen wird mit einer Einleitung in die Thematik der Move-Semantik.
+
+An die Einleitung schließt sich der Hauptteil an, welcher mit dem Kapitel ,,Was 
+ist ein Move?`` beginnt.
+
+Darauf folgen die Kapitel 
+
+,,Gefährliche und harmlose Moves``,
+
+,,Value categories``,
+
+,,Rvalue-Referenzen``,
+
+,,Implizite Konvertierungen``,
+
+,,Move-Konstruktoren``,
+
+,,Move-Zuweisungsoperatoren``,
+
+,,Von Lvalues moven``,
+
+,,Xvalues``,
+
+,,Aus Funktionen hinausmoven``,
+
+,,In Datenmember hineinmoven``,
+
+,,Spezielle Mitgliedsfunktionen``,
+
+,,Forwarding references``,
+
+,,Implementation von std::move``,
+
+,,Perfect forwarding``,
+
+,,Move-Sicherheit``
+
+und
+
+,,Interaktion mit Standardbibliothekscontainern``
+
+Das Dokument beendet sich mit Quellenangaben.
+
+\vspace{77pt}
+\emph{Einleitung}
+
+Die Move-Semantik erlaubt es einem Objekt, unter bestimmten Bedingungen Besitz 
+über externe Ressourcen eines anderen Objekts zu übernehmen. Dies ist auf zweierlei 
+Weise von Signifikanz:
+
+1. Günstigere Move-Operationen statt teurere Kopieroperationen zu verwenden.
+
+Beispiel:
+
+Es sei folgende Klasse gegeben:
+
+\vspace{12pt}
+\#include \texttt{<}cstring\texttt{>}
+
+\vspace{12pt}
+class MyClass \{
+
+public:    
+
+\parindent=14pt
+explicit MyClass(const char* string)        
+
+\parindent=28pt
+: string\_(new char[std::strlen(string) + 1]) \{        
+
+std::strcpy(string\_, string);    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=0pt
+MyClass(const MyClass\& other)        
+
+\parindent=28pt
+: string\_(new char[std::strlen(other.string\_) + 1]) \{        
+
+std::strcpy(string\_, other.string\_);    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=0pt
+MyClass\& operator=(const MyClass\& other) \{        
+
+\parindent=28pt
+char* tmp = new char[std::strlen(other.string\_) + 1];        
+
+std::strcpy(tmp, other.string\_);        
+
+\parindent=57pt
+delete[] string\_;        
+
+\parindent=28pt
+string\_ = tmp;        
+
+return *this;    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=14pt
+\textasciitilde{}MyClass() \{        
+
+\parindent=28pt
+delete[] string\_;    
+
+\parindent=14pt
+\}
+
+\vspace{12pt}
+\parindent=0pt
+private:    
+
+\parindent=14pt
+char* string\_;
+
+\parindent=0pt
+\};
+
+\vspace{12pt}
+Folgende Funktion sei deklariert und definiert:
+
+void f(MyClass v);
+
+\vspace{12pt}
+Die main-Funktion sehe wie folgt aus:
+
+int main() \{    
+
+\parindent=14pt
+f(MyClass(``Hallo''));    
+
+return 0;
+
+\}
+
+\vspace{12pt}
+\parindent=0pt
+Es wird ein temporäres Objekt vom Typ MyClass mit dem Stringliteral ``Hallo`` 
+konstruiert, entsprechend des Konstruktors.
+
+Dieses Objekt wird nun in den Parameter v der Funktion f mit dem Kopierkonstruktor 
+kopiert.
+
+\vspace{12pt}
+Da das temporäre Objekt nicht länger gebraucht wird, wird die Zeichenfolge ``Hallo`` 
+einmal unnötigerweise kopiert.
+
+\vspace{12pt}
+In C++11 kann man mit einem Move-Konstruktor und einem Move-Zuweisungsoperator 
+durch Move-Semantik diese unnötige Kopie entfernen.
+
+Die Klasse wäre dann wie folgt definiert:
+
+\vspace{12pt}
+\#include \texttt{<}cstring\texttt{>}
+
+\vspace{12pt}
+class MyClass final \{
+
+public:    
+
+\parindent=14pt
+explicit MyClass(const char* string)        
+
+\parindent=28pt
+: string\_\{ new char[std::strlen(string) + 1] \} \{        
+
+std::strcpy(string\_, string);    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=14pt
+MyClass(const MyClass\& other)        
+
+\parindent=28pt
+: string\_\{ new char[std::strlen(other.string\_) + 1] \} \{        
+
+std::strcpy(string\_, other.string\_);    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=14pt
+MyClass(MyClass\&\& other) noexcept        
+
+\parindent=28pt
+: string\_\{ other.string\_ \} \{        
+
+other.string\_ = nullptr;    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=14pt
+MyClass\& operator=(const MyClass\& other) \{        
+
+\parindent=28pt
+auto tmp = new char[std::strlen(other.string\_) + 1];        
+
+std::strcpy(tmp, other.string\_);        
+
+\parindent=57pt
+delete[] string\_;        
+
+\parindent=28pt
+string\_ = tmp;        
+
+return *this;    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=14pt
+MyClass\& operator=(MyClass\&\& other) noexcept \{        
+
+\parindent=28pt
+auto tmp = other.string\_;        
+
+other.string\_ = nullptr;        
+
+\parindent=57pt
+delete[] string\_;        
+
+\parindent=28pt
+string\_ = tmp;        
+
+return *this;    
+
+\parindent=43pt
+\}    
+
+\vspace{12pt}
+\parindent=14pt
+\textasciitilde{}MyClass() \{        
+
+\parindent=28pt
+delete[] string\_;    
+
+\parindent=14pt
+\}
+
+\vspace{12pt}
+\parindent=0pt
+private:    
+
+\parindent=14pt
+char* string\_;
+
+\parindent=0pt
+\};
+
+\vspace{12pt}
+Nun wird statt des Kopierkonstruktors der Move-Konstruktor aufgerufen, was dazu 
+führt, dass die Zeichenkette nicht kopiert wird, sondern das neue Objekt v in 
+f einfach Besitz über die Zeichenkette des temporären Objekts übernimmt.
+
+\vspace{12pt}
+2. Das Implementieren vom Move-Only-Typen.
+
+Es gibt Typen, die logisch nicht kopierbar sind.
+
+Dazu zählen zum Beispiel Netzwerksockets, Dateihandles, Locks, etc.
+
+Auch der neue smart pointer std::unique\_ptr zählt zu den Move-Only-Typen, da 
+dieser das Konzept eines einzelnen Besitzers über eine Ressource implementiert.
+
+\vspace{25pt}
+\emph{Hauptteil}
+
+\textbf{Was ist ein Move?}
+
+Die C++98 Standardbibliothek bietet einen smart pointer, welcher die Semantik eines 
+einzelnen Besitzers über eine Ressource implementiert, welcher std::auto\_ptr 
+heißt.
+
+Der Sinn und Zweck von std::auto\_ptr war es zu garantieren, dass ein dynamisch 
+allokiertes Objekt immer freigegeben wird, unabhängig davon ob Ausnahmen geworfen 
+werden.
+
+Beispiel:
+
+\{    
+
+\parindent=14pt
+std::auto\_ptr\texttt{<}Form\texttt{>} a(new Dreieck);    
+
+// ...    
+
+\parindent=28pt
+// beliebiger Code, könnte Ausnahmen werfen    
+
+\parindent=14pt
+// ... 
+
+\parindent=0pt
+\}   // \ensuremath{\Downarrow} wenn a seinen Gültigkeitsbereich verlässt wird 
+das Dreieck     
+
+\parindent=14pt
+// automatisch zerstört.
+
+\vspace{12pt}
+\parindent=0pt
+Was an dem auto\_ptr besonders ist, ist wie er kopiert:
+
+std::auto\_ptr\texttt{<}Form\texttt{>} a(new Dreieck);      
+
+\vspace{12pt}
+\parindent=21pt
++---------------+      
+
+\textbar{}  Dreieckdaten \textbar{}      
+
++---------------+        
+
+\parindent=50pt
+\textasciicircum{}        
+
+\parindent=28pt
+\textbar{}        
+
+\textbar{}        
+
+\parindent=57pt
+\textbar{}  
+
+\parindent=7pt
++-----\textbar{}---+  
+
+\textbar{}   +-\textbar{}-+ \textbar{}
+
+a \textbar{} p \textbar{} \textbar{} \textbar{} \textbar{}  
+
+\parindent=14pt
+\textbar{}   +---+ \textbar{}  
+
+\parindent=7pt
++---------+
+
+\vspace{51pt}
+\parindent=0pt
+std::auto\_ptr\texttt{<}Form\texttt{>} b(a);      
+
+\vspace{12pt}
+\parindent=21pt
++---------------+      
+
+\textbar{}  Dreieckdaten \textbar{}      
+
++---------------+        
+
+\parindent=50pt
+\textasciicircum{}        
+
+\parindent=28pt
+\textbar{}        
+
++----------------------+                               
+
+\parindent=140pt
+\textbar{}  
+
+\parindent=7pt
++---------+            +-----\textbar{}---+  
+
+\textbar{}   +---+ \textbar{}            \textbar{}   +-\textbar{}-+ \textbar{}
+
+a \textbar{} p \textbar{}   \textbar{} \textbar{}          b \textbar{} p \textbar{} 
+\textbar{} \textbar{} \textbar{}  
+
+\parindent=14pt
+\textbar{}   +---+ \textbar{}            \textbar{}   +---+ \textbar{}  
+
+\parindent=7pt
++---------+            +---------+
+
+\vspace{12pt}
+\parindent=0pt
+Achten Sie darauf, wie die Initialisierung von b mit a nicht das Dreieck kopiert.
+
+Stattdessen wird der Besitz über das Dreieck von a nach b transferiert.
+
+\vspace{12pt}
+Ein Objekt zu Moven bedeutet den Besitz der Ressourcen, welche es verwaltet an 
+ein anderes Objekt zu übergeben.
+
+\vspace{12pt}
+Der Kopierkonstruktor von auto\_ptr könnte in etwa so aussehen:
+
+\vspace{12pt}
+auto\_ptr(auto\_ptr\& quelle) // kein const, da quelle modifiziert wird
+
+\{    
+
+\parindent=14pt
+p = quelle.p;    
+
+quelle.p = 0; // die quelle besitzt das Objekt nicht mehr.
+
+\}
+
+\vspace{12pt}
+\parindent=0pt
+\textbf{Gefährliche und harmlose Moves}
+
+Das Gefährliche an dem auto\_ptr ist, dass das was syntaktisch wie ein Kopieren 
+aussieht in 
+
+Wirklichkeit ein Move ist. Ein Versuch eine Funktion über den überladenen member 
+of pointer-Operator von std::auto\_ptr aufzurufen, nachdem von diesem der Besitz 
+über das zu verwaltende Objekt durch den Kopierkonstruktor oder Kopierzuweisungsoperator 
+hinfort transferiert wurde resultiert in undefiniertem Verhalten. Somit ist der 
+Umgang mit auto\_ptr gefährlich, da man ihn leicht falsch benutzen kann.
+
+Beispiel:
+
+auto\_ptr\texttt{<}Form\texttt{>} a(new Dreieck); // Dreieck erstellen
+
+auto\_ptr\texttt{<}Form\texttt{>} b(a);         // a nach b moven
+
+double flaeche = a-\texttt{>}flaeche();  // undefiniertes Verhalten
+
+Bei einer Fabrikfunktion tritt diese Gefahr nicht auf.
+
+Beispiel:
+
+auto\_ptr\texttt{<}Form\texttt{>} erstelle\_dreieck()
+
+\{    
+
+\parindent=14pt
+return auto\_ptr\texttt{<}Form\texttt{>}(new Dreieck);
+
+\parindent=0pt
+\}
+
+auto\_ptr\texttt{<}Form\texttt{>} c(erstelle\_dreieck()); // move das Temporäre 
+in c
+
+double flaeche = erstelle\_dreieck()-\texttt{>}flaeche(); // sicher
+
+Achten Sie darauf, wie beide Beispiele demselben syntaktischen Muster folgen:
+
+auto\_ptr\texttt{<}Form\texttt{>} variable(ausdruck);
+
+double flaeche = ausdruck-\texttt{>}flaeche();
+
+Trotzdem führt ein Beispiel zu undefiniertem Verhalten, während das andere dieses 
+nicht tut. a und erstelle\_dreieck() sind ausdrücke vom selben Typ haben aber 
+eine andere value category.
+
+\vspace{12pt}
+\textbf{Value categories}
+
+Es gibt einen signifikanten Unterschied zwischen den Ausdrücken a, welcher eine 
+auto\_ptr Variable bezeichnet und dem Ausdruck erstelle\_dreieck(), welcher einen 
+Funktionsaufruf, welcher einen auto\_ptr per Wert zurückgibt, bezeichnet. erstelle\_dreieck() 
+erstellt bei jedem neuen Aufruf immer ein neues temporäres auto\_ptr Objekt. a 
+ist eine lvalue, während erstelle\_dreieck() ein Beispiel für eine rvalue ist.
+
+Von lvalues wie a zu moven ist gefährlich, denn man könnte später versuchen 
+beispielsweise eine Mitgliedsfunktion über a aufzurufen, welches in undefiniertem 
+Verhalten resultieren würde.
+
+Von rvalues wie erstelle\_dreieck() zu moven ist sicher, denn man kann dieses temporäre 
+Objekt nicht noch einmal referenzieren. Wenn man erneut erstelle\_dreieck() schreibt, 
+so bekommt man ein anderen temporäres Objekt. Das temporäre Objekt, von welchem 
+moved wird verlässt seinen Gültigkeitsbereich nach dem Ausdruck.
+
+auto\_ptr\texttt{<}Form\texttt{>} c(erstelle\_dreieck());       
+
+\parindent=115pt
+\textasciicircum{} das Temporäre wird zerstört
+
+\parindent=0pt
+Die Buchstaben l und r bei lvalues und rvalues haben historische Herkunft. Das 
+l steht dabei für die linke Seite einer Zuweisung und das r für die rechte Seite 
+einer Zuweisung. In C++ gilt dies allerdings nicht mehr, da es lvalues gibt, die 
+nicht auf der linken Seite einer Zuweisung auftreten können, wie zum Beispiel 
+arrays, oder benutzerdefinierte Type ohne Zuweisungsoperator. Außerdem gibt es 
+auch rvalues, die auf der linken Seite einer Zuweisung auftreten können, dazu 
+zählen alle rvalues von Klassentypen mit Zuweisungsoperator.
+
+Eine rvalue eines Klassentyps ist ein Ausdruck, dessen Evaluation ein temporäres 
+Objekt erzeugt. Unter normalen Umständen kann kein anderer Ausdruck im selben 
+Gültigkeitsbereich des selbe temporäre Objekt bezeichnen.
+
+\vspace{38pt}
+\textbf{Rvalue-Referenzen}
+
+Nun ist uns klar, dass das Moven von lvalues potenziell gefährlich sein kann und 
+dass das Moven von rvalues harmlos ist. Wenn man lvalue-Argumente von rvalue-Argumenten 
+unterscheiden kann, dann kann man das Moven von lvalues unterbinden, oder es wenigstens 
+explizit machen, sodass man nicht mehr aus Versehen Moven kann.
+
+Die Antwort auf das Problem sind in C++11 die Rvalue-Referenzen.
+
+Eine Rvalue-Referenz ist ein neuer Referenztypmodifizierer, welcher eine Referenz 
+deklariert, die ausschließlich an rvalues gebunden werden kann.
+
+Der Syntax ist X\&\&. Die aus C++98 und C++03 bekannte Referenz im Stil X\&, wird 
+Lvalue-Referenz genannt.
+
+X\&\& ist keine Referenz auf eine Referenz, so etwas ist in C++ nicht möglich, 
+da Referenzen keine Objekte sind.
+
+Mit dem const-Typmodifizierer haben wir bereits vier verschiedene Referenztypen.
+
+Der folgenden Tabelle ist zu entnehmen an welche Art von Ausdruck welcher Referenztyp 
+gebunden werden kann:            
+
+\parindent=43pt
+lvalue   const lvalue   rvalue   const rvalue
+
+\parindent=0pt
+---------------------------------------------------------              
+
+X\&          Ja     Nein           Nein     Nein
+
+const X\&    Ja        Ja             Ja       Ja
+
+X\&\&         Nein      Nein           Ja       Nein
+
+const X\&\&   Nein      Nein           Ja       Ja
+
+\vspace{12pt}
+\textbf{Implizite Konvertierungen}
+
+Eine Rvalue-Referenz X\&\& kann auch an alle value categories eines anderen Typs 
+Y gebunden werden, gegeben, dass es eine implizite Konvertierung von Y zu X gibt. 
+In dem Fall wird ein temporäres Objekt vom Typ X erstellt, an welches die Rvalue-Referenz 
+gebunden wird.
+
+void eine\_funktion(std::string\&\& r);
+
+eine\_funktion(``Hallo Welt``);
+
+In dem obigen Beispiel ist ``Hallo Welt`` eine lvalue vom Ty const char[11]. Da 
+es eine implizite Konvertierung von const char[11] durch const char* zu std::string 
+gibt, wird ein temporäres Objekt vom Typ std::string kreiert und r wird an dieses 
+gebunden.
+
+\vspace{12pt}
+\textbf{Move-Konstruktoren}
+
+Ein nützliches Beispiel für eine Funktion mit einem X\&\&-Parameter ist der Move-Konstruktor 
+X::X(X\&\& quelle). Der Sinn des Move-Konstruktors ist es den Besitz von einer 
+verwalteten Ressource von einem Quellobjekt zum momentanen Objekt zu transferieren.
+
+In C++11 wurde die Klasse std::auto\_ptr mit std::unique\_ptr effektiv erstetzt.
+
+std::unique\_ptr nutzt Rvalue-Referenzen.
+
+Im Folgenden soll eine vereinfachte Version von unique\_ptr erstellt werden. Zuerst 
+wird ein roher Zeiger gekapselt und die Operatoren -\texttt{>} und * werden überladen.
+
+template\texttt{<}typename T\texttt{>}
+
+class unique\_ptr
+
+\{    
+
+\parindent=14pt
+T* ptr;
+
+\vspace{12pt}
+\parindent=0pt
+public:    
+
+\parindent=14pt
+T* operator-\texttt{>}() const    
+
+\{        
+
+\parindent=43pt
+return ptr;    
+
+\parindent=14pt
+\}    
+
+\vspace{12pt}
+T\& operator*() const    
+
+\parindent=28pt
+\{        
+
+return *ptr;    
+
+\parindent=43pt
+\}
+
+\parindent=0pt
+// Der Konstruktor übernimmt den Besitz über das Objekt und
+
+// der Destruktor löscht es.    
+
+\parindent=14pt
+explicit unique\_ptr(T* p = nullptr)    
+
+\{        
+
+\parindent=43pt
+ptr = p;    
+
+\parindent=14pt
+\}    
+
+\vspace{12pt}
+\textasciitilde{}unique\_ptr()    
+
+\parindent=28pt
+\{        
+
+delete ptr;    
+
+\parindent=43pt
+\}
+
+\parindent=0pt
+// Nun der Move-Konstruktor    
+
+unique\_ptr(unique\_ptr\&\& source)    
+
+\parindent=14pt
+\{        
+
+\parindent=28pt
+ptr = source.ptr;        
+
+source.ptr = nullptr;    
+
+\parindent=43pt
+\}
+
+\parindent=0pt
+// Dieser Move-Konstruktor tut das Gleiche, wie
+
+// der Kopierkonstruktor von auto\_ptr,
+
+// doch kann er nur mit Rvalues beliefert werden.
+
+unique\_ptr\texttt{<}Form\texttt{>} a(new Dreieck);
+
+unique\_ptr\texttt{<}Form\texttt{>} b(a);                  // Fehler
+
+unique\_ptr\texttt{<}Form\texttt{>} c(erstelle\_dreieck()); // okay
+
+\vspace{12pt}
+Die zweite Zeile wird einen Kompilierfehler verursachen, da a eine lvalue ist, 
+aber der parameter unique\_ptr\&\& source nur an rvalues gebunden werden kann. 
+So können gefährliche Moven von lvalues nicht mehr implizit geschehen.
+
+Die dritte Zeile kompiliert fehlerfrei, da erstelle\_dreieck() eine rvalue ist. 
+Der Move-Konstruktor wird den Besitz von dem temporären Objekt zu c transferieren.
+
+\vspace{12pt}
+\textbf{Move-Zuweisungsoperatoren}
+
+Der Move-Zuweisungsoperator gibt die alte Ressource frei und bekommt eine neue 
+Ressource vom Argument.
+
+unique\_ptr\& operator=(unique\_ptr\&\& source)
+
+\{    
+
+\parindent=14pt
+auto temp = other.ptr;    
+
+other.ptr = nullptr;    
+
+\parindent=28pt
+delete ptr;    
+
+\parindent=14pt
+ptr = temp;    
+
+\vspace{12pt}
+return *this;
+
+\}
+
+\parindent=0pt
+Wie auch ein Kopierzuweisungsoperator sollte der Move-Zuweisungsoperator selbstzuweisungssicher 
+sein. Das obige Beispiel zeigt eine selbstzuweisungssichere Implementation.
+
+\vspace{12pt}
+\textbf{Von Lvalues moven}
+
+Manchmal möchte man von Lvalues moven. Also möchte man, dass der Compiler ein 
+Lvalue-Objekt behandelt, als wäre es ein Rvalue-Objekt, sodass der Move-Konstruktor 
+aufgerufen werden kann, auch wenn dies potenziell unsicher sein kann. Dafür bietet 
+die C++11-Standardbibliothek ein Funktionstemplate std::move im header \texttt{<}utility\texttt{>}. 
+std::move casted eine Lvalue zu einer Rvalue, es moved aber nichts selbst. Es ermöglicht 
+lediglich das Moven von einer Lvalue. Ist zum Beispiel kein Move-Konstruktor vorhanden, 
+wird nicht gemoved sondern der Kopierkonstruktor aufgerufen.
+
+So kann man von einer Lvalue moven:
+
+unique\_ptr\texttt{<}Form\texttt{>} a(new Dreieck);
+
+unique\_ptr\texttt{<}Form\texttt{>} b(a);            // Fehler
+
+unique\_ptr\texttt{<}Form\texttt{>} c(std::move(a)); // okay
+
+\vspace{12pt}
+Nach der dritten Zeile besitzt a nicht mehr das Dreieck.
+
+\vspace{12pt}
+\textbf{Xvalues}
+
+Trotz dass std::move eine rvalue ist, kreiert dessen Evaluation kein temporäres 
+Objekt. Dieses Rätsel zwang das Standardkomitee eine dritte value category einzuführen. 
+Etwas, welches an eine Rvalue-Referenz gebunden werden kann, aber nicht eine Rvalue 
+im traditionellem Sinne ist, wird xvalue genannt (expiring value). Die traditionellen 
+Rvalues wurden zu prvalues umbenannt (pure rvalues).
+
+prvalues und xvalues sind rvalues. Xvalues und Lvalues sind beide glvalues (generalized 
+lvalues). Der Zusammenhang sei durch folgendes Diagramm dargestellt:          
+
+\parindent=7pt
+Ausdrücke          
+
+\parindent=36pt
+/     \textbackslash{}         
+
+\parindent=32pt
+/       \textbackslash{}        
+
+\parindent=28pt
+/         \textbackslash{}    
+
+\parindent=14pt
+glvalues   rvalues      
+
+\parindent=21pt
+/  \textbackslash{}       /  \textbackslash{}     
+
+\parindent=18pt
+/    \textbackslash{}     /    \textbackslash{}    
+
+\parindent=14pt
+/      \textbackslash{}   /      \textbackslash{}
+
+\parindent=0pt
+lvalues   xvalues   prvalues
+
+\vspace{12pt}
+C++98 rvalues heißen prvalues in C++11. Somit kann der Leser nun nach Einführung 
+der prvalues jedes Auftreten von rvalue in den voherigen Kapiteln mit prvalue ersetzen.
+
+\vspace{12pt}
+\textbf{Aus Funktionen hinausmoven}
+
+Man kann auch aus Funktionen hinausmoven.
+
+Wenn eine Funktion etwas per Wert zurückgibt, so kann man mit dem Rückgabewert 
+eine Variable an der Aufrufsstelle initialisieren. Dabei wird der Ausdruck nach 
+dem return Schlüsselwort als Argument an den Move-Konstruktor genutzt.
+
+unique\_ptr\texttt{<}Form\texttt{>} erstelle\_dreieck()
+
+\{    
+
+\parindent=14pt
+return unique\_ptr\texttt{<}Form\texttt{>}(new Dreieck);
+
+\parindent=0pt
+\}          \textbackslash{}-----------------------------/                  
+
+\parindent=64pt
+\textbar{}                  
+
+\textbar{} Temporäres Objekt wird in c hineingemoved                  
+
+\textbar{}                  
+
+\parindent=129pt
+v
+
+\parindent=0pt
+unique\_ptr\texttt{<}Form\texttt{>} c(erstelle\_dreieck());
+
+Automatische Objekte (lokale Variablen, welche nicht als static deklariert sind) 
+können implizit aus Funktionen hinausgemoved werden:
+
+unique\_ptr\texttt{<}Form\texttt{>} erstelle\_quadrat()
+
+\{    
+
+\parindent=14pt
+unique\_ptr\texttt{<}Form\texttt{>} result(new Quadrat);    
+
+return result;   // kein std::move
+
+\parindent=0pt
+\}
+
+Am Ende der Funktion endet der Gültigkeitsbereich von result. Nach dem zurückkehren 
+der Funktion existiert result nicht mehr, darum kann das Lvalue-Objekt ohne std::move 
+implizit aus der Funktion hinausgemoved werden.
+
+\vspace{12pt}
+\textbf{In Datenmember hineinmoven}
+
+Folgender Code kompiliert nicht:
+
+class Foo
+
+\{    
+
+\parindent=14pt
+unique\_ptr\texttt{<}Form\texttt{>} member;
+
+\vspace{12pt}
+\parindent=0pt
+public:    
+
+\parindent=14pt
+Foo(unique\_ptr\texttt{<}Form\texttt{>}\&\& parameter)    
+
+: member(parameter)   // error    
+
+\parindent=28pt
+\{\}
+
+\parindent=0pt
+\};
+
+Das liegt daran, dass unique\_ptr ein move-only type ist und parameter eine Lvalue 
+ist.
+
+Eine Referenz ist immer eine Lvalue. Das gilt auch für Rvalue-Referenzen. Eine 
+Rvalue-Referenz ist lediglich eine Referenz, die nur an Rvalues gebunden werden 
+kann.
+
+Die Lösung ist es explizit mit std::move zu einer Rvalue zu casten.
+
+class Foo
+
+\{    
+
+\parindent=14pt
+unique\_ptr\texttt{<}Form\texttt{>} member;
+
+\vspace{12pt}
+\parindent=0pt
+public:    
+
+\parindent=14pt
+Foo(unique\_ptr\texttt{<}Form\texttt{>}\&\& parameter)    
+
+: member(std::move(parameter))    
+
+\{\}
+
+\};
+
+\vspace{12pt}
+\parindent=0pt
+\textbf{Spezielle Mitgliedsfunktionen}
+
+In C++98 werden implizit drei spezielle Mitgliedsfunktionen generiert, wenn sie 
+benötigt werden. Diese sind Kopierkonstruktor, Kopierzuweisungsoperator und Destruktor.
+
+X::X(const X\&);            // Kopierkonstruktor
+
+X\& X::operator=(const X\&); // Kopierzuweisungsoperator
+
+X::\textasciitilde{}X();                   // Destruktor
+
+\vspace{12pt}
+In C++11 werden zwei weitere spezielle Mitgliedsfunktionen generiert.
+
+Diese sind Move-Konstruktor und Move-Zuweisungsoperator.
+
+X::X(X\&\&);            // Move-Konstruktor
+
+X\& X::operator=(X\&\&); // Move-Zuweisungsoperator
+
+\vspace{12pt}
+Diese zwei neuen speziellen Mitgliedsfunktionen werden nur dann implizit generiert, 
+wenn keine speziellen Mitgliedsfunktionen manuell deklariert wurden. Des Weiteren 
+werden Kopierkonstruktor und Kopierzuweisungsoperator nicht mehr generiert, wenn 
+man seinen eigenen Move-Konstruktor oder Move-Zuweisungsoperator deklariert.
+
+Folgende Tabelle stellt dar, welche speziellen Mitgliedsfunktionen der Compiler 
+in welchen Fällen generiert:
+
+Wird der Compiler generieren ...                        
+
+\parindent=122pt
+Wenn der Programmierer deklariert...
+
+\parindent=0pt
+\begin{tabular}{|>{\raggedright}p{8pt}|>{\raggedright}p{28pt}|>{\raggedright}p{28pt}|>{\raggedright}p{28pt}|>{\raggedright}p{28pt}|>{\raggedright}p{28pt}|>{\raggedright}p{28pt}|}
+\hline
+ & Nichts & dtor & cctor & cpy-op= & mctor & mv-op=\tabularnewline
+\hline
+dtor & Ja &  & Ja & Ja & Ja & Ja\tabularnewline
+\hline
+cctor & Ja & Ja &  & Ja & Nein & Nein\tabularnewline
+\hline
+cpy-op= & Ja & Ja & Ja &  & Nein & Nein\tabularnewline
+\hline
+mctor & Ja & Nein & Nein & Nein &  & Nein\tabularnewline
+\hline
+mv-op= & Ja & Nein & Nein & Nein & Nein & \tabularnewline
+\hline
+\end{tabular}
+
+\vspace{220pt}
+Wird ein Kopierkonstruktor oder ein Kopierzuweisungsoperator deklariert, so werden 
+Move-Konstruktor und Move-Zuweisungsoperator nicht generiert, dennoch kann man 
+Objekte des Typs von Rvalues erzeugen, diese werden dann den Kopierkonstruktor 
+nutzen. Genauso wird bei Zuweisung mit einer Rvalue dann der Kopierzuweisungsoperator 
+verwendet.
+
+Wenn man eine Klasse schreibt, welche keine unverwalteten Ressourcen hat, so braucht 
+man keine der fünf speziellen Mitgliedsfunktionen selbst schreiben. Der Compiler 
+wird die korrekten Kopier- und Move-Semantiken generieren. Ansonsten muss man die 
+speziellen Mitgliedsfunktionen selbst schreiben. Wenn eine Klasse durch Move-Semantik, 
+keine Vorteile erfährt, so braucht man den Move-Konstruktor und Move-Zuweisungsoperator 
+auch nicht zu definieren.
+
+\vspace{12pt}
+\textbf{Forwarding references}
+
+Folgendes Funktionstemplate sei gegeben:
+
+template \texttt{<}typename T\texttt{>}
+
+void foo(T\&\&);
+
+T\&\& ist in diesem Fall nicht eine Rvalue Referenz, sondern eine forwarding reference.
+
+Es kann auch an lvalues gebunden werden.
+
+foo(erstelle\_dreieck()); // T ist unique\_ptr\texttt{<}Form\texttt{>}\&\&,    
+                     
+
+\parindent=90pt
+// T\&\& ist unique\_ptr\texttt{<}Form\texttt{>}\&\&
+
+\parindent=0pt
+unique\_ptr\texttt{<}Form\texttt{>} a(new Dreieck);
+
+foo(a); // T ist unique\_ptr\texttt{<}Form\texttt{>}\&,        
+
+\parindent=28pt
+// T\&\& ist unique\_ptr\texttt{<}Form\texttt{>}\&
+
+\parindent=0pt
+Wird also eine Lvalue als Argument übergeben, so wird die forwarding reference 
+zu einer entsprechenden Lvalue Referenz. Wird eine Rvalue übergeben, so wird die 
+forwarding reference zu der entsprecheneden Rvalue Referenz.
+
+Der Typ T wird abgeleitet und so entstehen invalide Typen aus Referenzen zu Referenzen.
+
+wie z.B. T \& \&, T\& \&\&, T\&\& \&, oder T\&\& \&\&. Diese werden anhand der 
+reference collapsing rules zu validen Referenztypen umgewandelt:
+
+T\& \& wird zu T\&
+
+T\& \&\& wird zu T\&
+
+T\&\& \& wird zu T\&
+
+T\&\& \&\& wird zu T\&\&
+
+\vspace{12pt}
+Möchte man ein Funktionstemplate, welches nur rvalues akzeptiert, kann man das 
+zum Beispiel wie folgt deklarieren:
+
+\#include \texttt{<}type\_traits\texttt{>}
+
+template \texttt{<}typename T\texttt{>}
+
+typename std::enable\_if\texttt{<}std::is\_rvalue\_reference\texttt{<}T\&\&\texttt{>}::value, 
+void\texttt{>}::type
+
+foo(T\&\&);
+
+\vspace{12pt}
+\textbf{Implementation von std::move}
+
+template\texttt{<}typename T\texttt{>}
+
+typename std::remove\_reference\texttt{<}T\texttt{>}::type\&\&
+
+move(T\&\& t)
+
+\{    
+
+\parindent=14pt
+return static\_cast\texttt{<}typename std::remove\_reference\texttt{<}T\texttt{>}::type\&\&\texttt{>}(t);
+
+\parindent=0pt
+\}
+
+move akzupetiert jede Art von Parameter dank der forwarding reference T\&\&.
+
+move gibt eine Rvalue Referenz zurück.
+
+Der Einsatz der Metafunktion std::remove\_reference ist nötig, denn für Lvalues 
+vom Typ X wäre der Rückgabetyp X\& \&\&, welche zu X\& zusammenfallen würde. 
+Da t, wie jede Referenz, eine Lvalue ist, aber wir eine Rvalue Referenz an t binden 
+wollen, muss t explizit zum korrekten Rückgabetyp gecasted werden. 
+
+Der Aufruf einer Funktion, welche eine Rvalue Referenz zurückgimt, wie zum Beispiel 
+std::move, ist eine xvalue.
+
+\vspace{12pt}
+\textbf{Perfect forwarding}
+
+Ein Problem welches forwarding references lösen ist das perfect forwarding-Problem.
+
+Gegeben sei folgende simple Fabrikfunktion:
+
+template \texttt{<}typename T, typename Arg\texttt{>}
+
+std::shared\_ptr\texttt{<}T\texttt{>} factory(Arg arg)
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}T\texttt{>}(new T(arg));
+
+\parindent=0pt
+\}
+
+Die Absicht ist es das Argument in arg an den Konstruktor von T weiterzuleiten.
+
+Idealerweise, sollte es sich so verhalten, als wäre die Fabrikfunktion gar nicht 
+da und es wäre so, als würde der Konstruktor direkt aufgerufen.
+
+Der Code im obigen Beispiel versagt dabei, da er eine unnötige Kopie im Parameter 
+vornimmt. Des Weiteren wird das Argument nicht nur unnötig kopiert, sondern wird 
+es immer als Lvalue weitergeleitet, auch wenn die value category eine andere war.
+
+Nimmt man nun eine Referenz statt eine Kopie zu machen, so ist das nicht viel besser.
+
+template \texttt{<}typename T, typename Arg\texttt{>}
+
+std::shared\_ptr\texttt{<}T\texttt{>} factory(Arg\& arg)
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}T\texttt{>}(new T(arg));
+
+\parindent=0pt
+\}
+
+Nun kann man die Funktion nicht mehr mit rvalues aufrufen.
+
+factory\texttt{<}X\texttt{>}(foo()); // Fehler, wenn foo by value zurückgibt
+
+factory\texttt{<}X\texttt{>}(41);    // Fehler
+
+Man kann nun ein const Lvalue Referenz-Parameter stattdessen nehmen.
+
+template \texttt{<}typename T, typename Arg\texttt{>}
+
+std::shared\_ptr\texttt{<}T\texttt{>} factory(const Arg\& arg) 
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}T\texttt{>}(new T(arg));
+
+\parindent=0pt
+\}
+
+Problematisch ist, dass die Fabrikfunktion nicht von Move-Semantik profitieren 
+kann, da sie ihr Argument immer als Lvalue weitterreicht. Von dem Argument zu Moven 
+ist nicht legal, da es const-qualifiziert ist und möglicherweise eine Lvalue ist.
+
+Man möchte also das Argument als Lvalue weiterleiten, wenn es eine Lvalue ist 
+und es als Rvalue weiterleites, wenn es eine Rvalue ist.
+
+Um dies zu erreichen werden im folgenden Beispiel forwarding references genutzt. 
+Diese fallen aufgrund der reference collapsing rules zum korrekten Referenzparametertyp 
+zusammen.
+
+template \texttt{<}typename T, typename Arg\texttt{>}
+
+std::shared\_ptr\texttt{<}T\texttt{>} factory(Arg\&\& arg)
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}T\texttt{>}(new T(std::forward\texttt{<}Arg\texttt{>}(arg)));
+
+\parindent=0pt
+\}
+
+std::forward kann wie folgt definiert sein:
+
+template \texttt{<}typename S\texttt{>}
+
+S\&\& forward(typename std::remove\_reference\texttt{<}S\texttt{>}::type\& a) noexcept
+
+\{    
+
+\parindent=14pt
+return static\_cast\texttt{<}S\&\&\texttt{>}(a);
+
+\parindent=0pt
+\}
+
+Es sei angenommen, dass factory\texttt{<}A\texttt{>} mit einer Lvalue vom Typ X 
+aufgerufen wird.
+
+X x;
+
+factory\texttt{<}A\texttt{>}(x);
+
+Aufgrund der reference collapsing rules wird das Template-Typ-Argument Arg in factory 
+zu X\&.
+
+Der Compiler wird folgende Instanziierungen von factory und std::forward erstellen:
+
+std::shared\_ptr\texttt{<}A\texttt{>} factory(X\& \&\& arg)
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}A\texttt{>}(new A(std::forward\texttt{<}X\&\texttt{>}(arg)));
+
+\parindent=0pt
+\}
+
+X\& \&\& forward(std::remove\_reference\texttt{<}X\&\texttt{>}::type\& a) noexcept
+
+\{    
+
+\parindent=14pt
+return static\_cast\texttt{<}X\& \&\&\texttt{>}(a);
+
+\parindent=0pt
+\}
+
+Nach dem Auswerten von std::remove\_reference und nach Anwenden der reference collapsing 
+rules wird dies zu:
+
+std::shared\_ptr\texttt{<}A\texttt{>} factory(X\& arg)
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}A\texttt{>}(new A(std::forward\texttt{<}X\&\texttt{>}(arg)));
+
+\parindent=0pt
+\}
+
+\vspace{25pt}
+X\& std::forward(X\& a)
+
+\{    
+
+\parindent=14pt
+return static\_cast\texttt{<}X\&\texttt{>}(a);
+
+\parindent=0pt
+\}
+
+Wie man sieht funktioniert das perfect forwarding für Lvalues. Die Lvalueness 
+bleibt durch alle Funktionsaufrufe hindurch dank std::forward erhalten.
+
+Als nächstes soll davon ausgegangen sein, dass factory\texttt{<}A\texttt{>} mit 
+einer Rvalue vom Typ X aufgerufen wird:
+
+X foo();
+
+factory\texttt{<}A\texttt{>}(foo());
+
+Dies wird zu folgenden Funktionstemplateinstanziierungen führen:
+
+std::shared\_ptr\texttt{<}A\texttt{>} factory(X\&\& \&\& arg)
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}A\texttt{>}(new A(std::forward\texttt{<}X\&\&\texttt{>}(arg)));
+
+\parindent=0pt
+\}
+
+X\&\& \&\& std::forward(typename std::remove\_reference\texttt{<}X\&\&\texttt{>}::type\& 
+a) noexcept
+
+\{    
+
+\parindent=14pt
+return static\_cast\texttt{<}X\&\& \&\&\texttt{>}(a);
+
+\parindent=0pt
+\}
+
+Nach dem Auswerten von std::remove\_reference und nach Anwenden der reference collapsing 
+rules wird dies zu:
+
+std::shared\_ptr\texttt{<}A\texttt{>} factory(X\&\& arg)
+
+\{    
+
+\parindent=14pt
+return std::shared\_ptr\texttt{<}A\texttt{>}(new A(std::forward\texttt{<}X\&\&\texttt{>}(arg)));
+
+\parindent=0pt
+\}
+
+X\&\& std::forward(X\& a) noexcept
+
+\{    
+
+\parindent=14pt
+return static\_cast\texttt{<}X\&\&\texttt{>}(a);
+
+\parindent=0pt
+\}
+
+Somit wird die Rvalue letztendlich durch std::forward zu einer Rvalue zurückgecasted 
+um die Rvalueness beim Weiterleiten beizubehalten.
+
+So löst std::forward das perfect forwarding-Problem, Lvalues werden immer als 
+Lvalues weitergeleitet und Rvalues immer als Rvalues, so werden die value categories 
+beibehalten.
+
+\textbf{Move-Sicherheit}
+
+Wenn man von einer Lvalue moved, zum Beispiel mit Hilfe von std::move, so verbleibt 
+ein move-from-Objekt. Diese Objekte werden auch Zombie-Objekte genannt und der 
+inkorrekte Umgang mit diesen kann undefiniertes Verhalten auslösen. Der Implementierer 
+eines Typs kann, sofern dieser Move-Semantik nutzt, den Move-Konstruktor und Move-Zuweisungsoperator 
+so definieren, dass bestimmte Garantien für Objekte des Typs im moved-from-Zustand 
+geboten werden können.
+
+Dabei kann man folgende Arten von Move-Sicherheit unterscheiden (es sind auch weitere 
+denkbar):
+
+1. Kein-Move-Garantie (nur Kopieren erlaubt)
+
+Ein Typ bietet Kein-Move-Garantie, wenn der Move-Konstruktor oder Move-Zuweisungsoperator 
+keine Move-Operationen vornehmen. Ein Move dieser Typen ist äquivalent mit einem 
+Kopieren.
+
+Wenn ein Typ diese Garantie bietet, hat er keine nutzerdefinierten Move-Operationen 
+und hat nur Datenmitglieder, die die gleiche Garantie bieten. Solche Typen besitzen 
+typischerweise keine Ressourcen, welche freigegeben werden müssen, darum benötigen 
+sie keine speziellen Kopier-Operationen oder Destruktoren.
+
+Jeder triviale Typ hat diese Garantie, sowie jeder Typ für welchen keine Move-Operationen 
+implizit generiert werden.
+
+\vspace{12pt}
+2. Starke Move-Sicherheit (Wohldefinierter und valider Moved-From-Zustand)
+
+Der Moved-From-Zustand eines Typs, welcher diese Move-Sicherheit bietet ist wohldefiniert. 
+Alle Mitgliedsfunktionen, dessen Vorbedingungen in dem definierten Zustand erfüllt 
+sind, können sicher aufgerufen werden. Zusätzlich werden diese Mitgliedsfunktionen 
+deterministische Auswirkungen oder Resultate haben.
+
+Ein Beispiel für einen Typ, der die starke Move-Sicherheit bietet ist std::unique\_ptr.
+
+Move-Konstruktion ist definiert als Transfer des Besitzes über das verwaltete 
+Objekt.
+
+Ein std::unique\_ptr im Moved-From-Zustand besitzt immer nichts. operator bool() 
+wird false zurückgeben und get() wird nullptr zurückgeben. Aufrufe von operator*() 
+oder operator-\texttt{>}() werden in undefiniertem Verhalten resultieren. Allerdings 
+ist zu beachten, dass bei std::unique\_ptrs mit einem custom deleter, der custom 
+deleter natürlich auch moved wird, dieser kann natürlich eine andere Move-Sicherheit 
+bieten.
+
+\vspace{12pt}
+3. Einfache Move-Sicherheit (Valider aber unspezifizierter Moved-From-Zustand)
+
+Die Einfache Move-Sicherheit benötigt keinen wohldefinierten Moved-From-Zustand.
+
+Sie benötigt lediglich, dass der Moved-From-Zustand valide ist, aber der genaue 
+Zustand ist nicht spezifiziert. Man kann sicher alle Mitgliedsfunktionen aufrufen, 
+die einen weiten Vertrag haben, das heißt, sie haben keine Vorbedingungen. Aber 
+es wird nicht garantiert welche Resultate diese Funktionsaufrufe haben werden, 
+sie sind nicht deterministisch wie bei der starken Move-Sicherheit. Ein Beispiel 
+für einen Typ mit einfacher Move-Sicherheit ist std::string.
+
+\vspace{12pt}
+std::string a(``Hello World``);
+
+std::string b(std::move(a));
+
+std::cout \texttt{<}\texttt{<} a.c\_str() \texttt{<}\texttt{<} `\textbackslash{}n`;
+
+\vspace{12pt}
+Der Aufruf der Mitgliedsfunktion c\_str auf dem Moved-From-Objekt a wird kein undefiniertes 
+Verhalten auslösen, aber ist das Resultat nicht spezifiziert. Es wird vom Standard 
+nicht garantiert welche Ausgabe erzeugt werden würde. std::string::c\_str() hat 
+keine Vorbedingung, somit wird garantiert, dass der Aufruf kein undefiniertes Verhalten 
+auslöst. Die Ausgabe ist von der Implementation abhängig.
+
+\vspace{12pt}
+4. Keine Move-Sicherheit
+
+Die geringste Garantie bietet keine Move-Sicherheit. Das Moved-From-Objekt ist 
+nach dem Move nicht mehr valide. Man darf lediglich den Destruktor aufrufen, oder 
+dem Objekt einen neuen Wert zuweisen (sofern es einen Zuweisungsoperator gibt). 
+Objekte müssen also immer zerstörbar sein, auch im Moved-From-Zustand. 
+
+\vspace{25pt}
+\textbf{Interaktion mit Standardbibliothekscontainern}
+
+Eigene Move-Konstruktoren und Move-Zuweisungsoperatoren sollten, wenn möglich 
+als noexcept deklariert werden. noexcept garantiert, das eine Funktion nicht wirft. 
+Sollte die Funktion doch werfen, so wird std::terminate() aufgerufen, was zum Abbruch 
+des Programms führt. Ist es möglich den Move-Konstruktor und den Move-Zuweisungsoperator 
+so zu definieren, dass sie nie werfen, so sollte dies getan werden. Dann sollte 
+zusätzlich auch der Move-Konstruktor und der Move-Zuweisungsoperator als noexcept 
+deklariert werden.
+
+Die Standardbibliothekscontainer bieten die ,,Strong Exception Guarantee``, diese 
+besagt, wenn eine Exception auftritt, so sind die Objekte immer noch im gleichen 
+Zustand, als wäre die Mitgliedsfunktion des Standardbibliothekscontainers nicht 
+aufgerufen worden.
+
+Ein Move modifiziert allerdings das Quellobjekt. Das Quellobjekt wird im Moved-From-Zustand 
+hinterlassen. Sollte dieser Move also werfen, kann die ,,Strong Exception Gurantee`` 
+nicht mehr geboten werden. Darum überprüfen die Mitgliedsfunktionen von Standardbibliothekscontainern, 
+ob ein Move von dem Quellobjekt werfen könnte (nicht als noexcept deklarierter 
+Move-Konstruktor oder Move-Zuweisungsoperator). Ist der Move-Konstruktor und Move-Zuweisungsoperator 
+also nicht noexcept, so werden Standardbibliothekscontainer nicht von der nutzerimplementierten 
+Move-Semantik Gebrauch machen, sondern stattdessen kopieren.
+
+\vspace{12pt}
+\emph{Quellenangaben}
+
+http://open-std.org/JTC1/SC22/WG21/docs/papers/2016/n4606.pdf
+
+http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2002/n1377.htm
+
+https://meetingcpp.com/index.php/br/items/cpp-and-zombies-a-moving-question.html
+
+https://foonathan.github.io/blog/2016/07/23/move-safety.html
+
+https://akrzemi1.wordpress.com/2011/08/11/move-constructor/
+
+https://akrzemi1.wordpress.com/2011/06/10/using-noexcept/
+
+http://en.cppreference.com/w/cpp/utility/move
+
+http://en.cppreference.com/w/cpp/utility/forward
+
+http://en.cppreference.com/w/cpp/language/rule\_of\_three
+
+http://en.cppreference.com/w/cpp/language/value\_category
+
+http://en.cppreference.com/w/cpp/language/reference
+
+http://en.cppreference.com/w/cpp/language/move\_constructor
+
+http://en.cppreference.com/w/cpp/language/move\_assignment
+
+http://stackoverflow.com/questions/3106110/what-are-move-semantics/11540204\#11540204
+
+http://thbecker.net/articles/rvalue\_references/section\_07.html
+
+http://thbecker.net/articles/rvalue\_references/section\_08.html
+
+http://www.codingstandard.com/rule/12-5-4-declare-noexcept-the-move-constructor-and-move-assignment-operator/
+
+\newpage
+
+\end{document}
