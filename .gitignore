@@ -498,6 +498,9 @@ paket-files/
 *.doc
 
 ### Text files ###
+*.txt
+*.rtf
 
-# Task
-Task.txt
+### Source files ###
+### C++ ###
+*.cpp
