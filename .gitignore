@@ -491,15 +491,9 @@ paket-files/
 *.vcxproj
 *.vcxproj.filters
 
-### MS Word ###
-
-# Documents
-*.docx
-*.doc
-
 ### Text files ###
 *.txt
-*.rtf
+old_text.docx
 
 ### Source files ###
 ### C++ ###
