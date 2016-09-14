@@ -560,13 +560,13 @@ Es gibt einen signifikanten Unterschied zwischen den Ausdrücken a, welcher eine
 auto\_ptr Variable bezeichnet und dem Ausdruck erstelle\_dreieck(), welcher einen 
 Funktionsaufruf, welcher einen auto\_ptr per Wert zurückgibt, bezeichnet. erstelle\_dreieck() 
 erstellt bei jedem neuen Aufruf immer ein neues temporäres auto\_ptr Objekt. a 
-ist eine lvalue, während erstelle\_dreieck() ein Beispiel für eine rvalue ist.
+ist eine Lvalue, während erstelle\_dreieck() ein Beispiel für eine Rvalue ist.
 
-Von lvalues wie a zu moven ist gefährlich, denn man könnte später versuchen 
+Von Lvalues wie a zu moven ist gefährlich, denn man könnte später versuchen 
 beispielsweise eine Mitgliedsfunktion über a aufzurufen, welches in undefiniertem 
 Verhalten resultieren würde.
 
-Von rvalues wie erstelle\_dreieck() zu moven ist sicher, denn man kann dieses temporäre 
+Von Rvalues wie erstelle\_dreieck() zu moven ist sicher, denn man kann dieses temporäre 
 Objekt nicht noch einmal referenzieren. Wenn man erneut erstelle\_dreieck() schreibt, 
 so bekommt man ein anderen temporäres Objekt. Das temporäre Objekt, von welchem 
 moved wird verlässt seinen Gültigkeitsbereich nach dem Ausdruck.
@@ -577,30 +577,30 @@ auto\_ptr\texttt{<}Form\texttt{>} c(erstelle\_dreieck());
 \textasciicircum{} das Temporäre wird zerstört
 
 \parindent=0pt
-Die Buchstaben l und r bei lvalues und rvalues haben historische Herkunft. Das 
+Die Buchstaben L und R bei Lvalues und Rvalues haben historische Herkunft. Das 
 l steht dabei für die linke Seite einer Zuweisung und das r für die rechte Seite 
-einer Zuweisung. In C++ gilt dies allerdings nicht mehr, da es lvalues gibt, die 
+einer Zuweisung. In C++ gilt dies allerdings nicht mehr, da es Lvalues gibt, die 
 nicht auf der linken Seite einer Zuweisung auftreten können, wie zum Beispiel 
-arrays, oder benutzerdefinierte Type ohne Zuweisungsoperator. Außerdem gibt es 
-auch rvalues, die auf der linken Seite einer Zuweisung auftreten können, dazu 
-zählen alle rvalues von Klassentypen mit Zuweisungsoperator.
+Arrays, oder benutzerdefinierte Type ohne Zuweisungsoperator. Außerdem gibt es 
+auch Rvalues, die auf der linken Seite einer Zuweisung auftreten können, dazu 
+zählen alle Rvalues von Klassentypen mit Zuweisungsoperator.
 
-Eine rvalue eines Klassentyps ist ein Ausdruck, dessen Evaluation ein temporäres 
+Eine Rvalue eines Klassentyps ist ein Ausdruck, dessen Evaluation ein temporäres 
 Objekt erzeugt. Unter normalen Umständen kann kein anderer Ausdruck im selben 
 Gültigkeitsbereich des selbe temporäre Objekt bezeichnen.
 
 \vspace{38pt}
 \textbf{Rvalue-Referenzen}
 
-Nun ist uns klar, dass das Moven von lvalues potenziell gefährlich sein kann und 
-dass das Moven von rvalues harmlos ist. Wenn man lvalue-Argumente von rvalue-Argumenten 
-unterscheiden kann, dann kann man das Moven von lvalues unterbinden, oder es wenigstens 
+Nun ist uns klar, dass das Moven von Lvalues potenziell gefährlich sein kann und 
+dass das Moven von Rvalues harmlos ist. Wenn man Lvalue-Argumente von Rvalue-Argumenten 
+unterscheiden kann, dann kann man das Moven von Lvalues unterbinden, oder es wenigstens 
 explizit machen, sodass man nicht mehr aus Versehen Moven kann.
 
 Die Antwort auf das Problem sind in C++11 die Rvalue-Referenzen.
 
 Eine Rvalue-Referenz ist ein neuer Referenztypmodifizierer, welcher eine Referenz 
-deklariert, die ausschließlich an rvalues gebunden werden kann.
+deklariert, die ausschließlich an Rvalues gebunden werden kann.
 
 Der Syntax ist X\&\&. Die aus C++98 und C++03 bekannte Referenz im Stil X\&, wird 
 Lvalue-Referenz genannt.
@@ -614,7 +614,7 @@ Der folgenden Tabelle ist zu entnehmen an welche Art von Ausdruck welcher Refere
 gebunden werden kann:            
 
 \parindent=43pt
-lvalue   const lvalue   rvalue   const rvalue
+Lvalue   const Lvalue   Rvalue   const Rvalue
 
 \parindent=0pt
 ---------------------------------------------------------              
@@ -639,7 +639,7 @@ void eine\_funktion(std::string\&\& r);
 
 eine\_funktion(``Hallo Welt``);
 
-In dem obigen Beispiel ist ``Hallo Welt`` eine lvalue vom Ty const char[11]. Da 
+In dem obigen Beispiel ist ``Hallo Welt`` eine Lvalue vom Typ const char[11]. Da 
 es eine implizite Konvertierung von const char[11] durch const char* zu std::string 
 gibt, wird ein temporäres Objekt vom Typ std::string kreiert und r wird an dieses 
 gebunden.
@@ -750,11 +750,11 @@ unique\_ptr\texttt{<}Form\texttt{>} b(a);                  // Fehler
 unique\_ptr\texttt{<}Form\texttt{>} c(erstelle\_dreieck()); // okay
 
 \vspace{12pt}
-Die zweite Zeile wird einen Kompilierfehler verursachen, da a eine lvalue ist, 
-aber der parameter unique\_ptr\&\& source nur an rvalues gebunden werden kann. 
-So können gefährliche Moven von lvalues nicht mehr implizit geschehen.
+Die zweite Zeile wird einen Kompilierfehler verursachen, da a eine Lvalue ist, 
+aber der parameter unique\_ptr\&\& source nur an Rvalues gebunden werden kann. 
+So können gefährliche Moven von Lvalues nicht mehr implizit geschehen.
 
-Die dritte Zeile kompiliert fehlerfrei, da erstelle\_dreieck() eine rvalue ist. 
+Die dritte Zeile kompiliert fehlerfrei, da erstelle\_dreieck() eine Rvalue ist. 
 Der Move-Konstruktor wird den Besitz von dem temporären Objekt zu c transferieren.
 
 \vspace{12pt}
@@ -812,13 +812,13 @@ Nach der dritten Zeile besitzt a nicht mehr das Dreieck.
 \vspace{12pt}
 \textbf{Xvalues}
 
-Trotz dass std::move eine rvalue ist, kreiert dessen Evaluation kein temporäres 
+Trotz dass std::move eine Rvalue ist, kreiert dessen Evaluation kein temporäres 
 Objekt. Dieses Rätsel zwang das Standardkomitee eine dritte value category einzuführen. 
 Etwas, welches an eine Rvalue-Referenz gebunden werden kann, aber nicht eine Rvalue 
-im traditionellem Sinne ist, wird xvalue genannt (expiring value). Die traditionellen 
-Rvalues wurden zu prvalues umbenannt (pure rvalues).
+im traditionellem Sinne ist, wird Xvalue genannt (expiring value). Die traditionellen 
+Rvalues wurden zu Prvalues umbenannt (pure rvalues).
 
-prvalues und xvalues sind rvalues. Xvalues und Lvalues sind beide glvalues (generalized 
+Prvalues und Xvalues sind Rvalues. Xvalues und Lvalues sind beide Glvalues (generalized 
 lvalues). Der Zusammenhang sei durch folgendes Diagramm dargestellt:          
 
 \parindent=7pt
@@ -834,7 +834,7 @@ Ausdrücke
 /         \textbackslash{}    
 
 \parindent=14pt
-glvalues   rvalues      
+Glvalues   Rvalues      
 
 \parindent=21pt
 /  \textbackslash{}       /  \textbackslash{}     
@@ -846,11 +846,11 @@ glvalues   rvalues
 /      \textbackslash{}   /      \textbackslash{}
 
 \parindent=0pt
-lvalues   xvalues   prvalues
+Lvalues   Xvalues   Prvalues
 
 \vspace{12pt}
-C++98 rvalues heißen prvalues in C++11. Somit kann der Leser nun nach Einführung 
-der prvalues jedes Auftreten von rvalue in den voherigen Kapiteln mit prvalue ersetzen.
+C++98 Rvalues heißen Prvalues in C++11. Somit kann der Leser nun nach Einführung 
+der Prvalues jedes Auftreten von Rvalue in den voherigen Kapiteln mit Prvalue ersetzen.
 
 \vspace{25pt}
 \textbf{Aus Funktionen hinausmoven}
@@ -1037,7 +1037,7 @@ void foo(T\&\&);
 
 T\&\& ist in diesem Fall nicht eine Rvalue-Referenz, sondern eine forwarding reference.
 
-Es kann auch an lvalues gebunden werden.
+Es kann auch an Lvalues gebunden werden.
 
 foo(erstelle\_dreieck()); // T ist unique\_ptr\texttt{<}Form\texttt{>}\&\&,    
                      
@@ -1072,7 +1072,7 @@ T\&\& \& wird zu T\&
 T\&\& \&\& wird zu T\&\&
 
 \vspace{12pt}
-Möchte man ein Funktionstemplate, welches nur rvalues akzeptiert, kann man das 
+Möchte man ein Funktionstemplate, welches nur Rvalues akzeptiert, kann man das 
 zum Beispiel wie folgt deklarieren:
 
 \#include \texttt{<}type\_traits\texttt{>}
@@ -1101,7 +1101,7 @@ return static\_cast\texttt{<}typename std::remove\_reference\texttt{<}T\texttt{>
 \parindent=0pt
 \}
 
-move akzupetiert jede Art von Parameter dank der forwarding reference T\&\&.
+move akzeptiert jede Art von Parameter dank der forwarding reference T\&\&.
 
 move gibt eine Rvalue-Referenz zurück.
 
@@ -1110,8 +1110,8 @@ vom Typ X wäre der Rückgabetyp X\& \&\&, welche zu X\& zusammenfallen würde.
 Da t, wie jede Referenz, eine Lvalue ist, aber wir eine Rvalue-Referenz an t binden 
 wollen, muss t explizit zum korrekten Rückgabetyp gecasted werden. 
 
-Der Aufruf einer Funktion, welche eine Rvalue-Referenz zurückgimt, wie zum Beispiel 
-std::move, ist eine xvalue.
+Der Aufruf einer Funktion, welche eine Rvalue-Referenz zurückgibt, wie zum Beispiel 
+std::move, ist eine Xvalue.
 
 \vspace{12pt}
 \textbf{Perfect forwarding}
@@ -1155,7 +1155,7 @@ return std::shared\_ptr\texttt{<}T\texttt{>}(new T(arg));
 \parindent=0pt
 \}
 
-Nun kann man die Funktion nicht mehr mit rvalues aufrufen.
+Nun kann man die Funktion nicht mehr mit Rvalues aufrufen.
 
 factory\texttt{<}X\texttt{>}(foo()); // Fehler, wenn foo by value zurückgibt
 
@@ -1176,7 +1176,7 @@ return std::shared\_ptr\texttt{<}T\texttt{>}(new T(arg));
 \}
 
 Problematisch ist, dass die Fabrikfunktion nicht von Move-Semantik profitieren 
-kann, da sie ihr Argument immer als Lvalue weitterreicht. Von dem Argument zu Moven 
+kann, da sie ihr Argument immer als Lvalue weitterreicht. Von dem Argument zu moven 
 ist nicht legal, da es const-qualifiziert ist und möglicherweise eine Lvalue ist.
 
 Man möchte also das Argument als Lvalue weiterleiten, wenn es eine Lvalue ist 
@@ -1520,7 +1520,7 @@ das enable\_if vollkommen aushebeln kann. Somit ist die Vorgehensweise aus obige
 Codebeispiel vorzuziehen, da diese wesentlich simpler ist.
 
 Es sei allerdings anzumerken, dass man für Mitgliedsfunktionen, wie zum Beispiel 
-Settern es generell vorziehen sollte explizit mit L-Value und Rvalue-Referenzen 
+Settern es generell vorziehen sollte explizit mit Lvalue-Referenzen und Rvalue-Referenzen 
 zu überladen.
 
 Für Lvalues würde das Argument in den Parameter kopiert werden, dies kann potenziell 
