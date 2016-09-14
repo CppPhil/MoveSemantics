@@ -67,9 +67,15 @@ Haupteil
 • Interaktion mit Standardbibliothekscontainern
 
 \vspace{12pt}
+Anwendung
+
+\vspace{12pt}
+Fazit
+
+\vspace{12pt}
 Quellenangaben
 
-\vspace{129pt}
+\vspace{77pt}
 \emph{Abstract }
 
 Folgendes Dokument erläutert die Move-Semantik in der C++-Programmiersprache, 
@@ -120,9 +126,12 @@ und
 
 ,,Interaktion mit Standardbibliothekscontainern``
 
+Anschließend folgt der Teil ,,Anwendung``, der die Anwendung der Move-Semantik 
+mit Beispielen zeigt, darauf folgt das Fazit.
+
 Das Dokument beendet sich mit Quellenangaben.
 
-\vspace{77pt}
+\vspace{51pt}
 \emph{Einleitung}
 
 Die Move-Semantik erlaubt es einem Objekt, unter bestimmten Bedingungen Besitz 
@@ -778,7 +787,7 @@ return *this;
 Wie auch ein Kopierzuweisungsoperator sollte der Move-Zuweisungsoperator selbstzuweisungssicher 
 sein. Das obige Beispiel zeigt eine selbstzuweisungssichere Implementation.
 
-\vspace{12pt}
+\vspace{25pt}
 \textbf{Von Lvalues moven}
 
 Manchmal möchte man von Lvalues moven. Also möchte man, dass der Compiler ein 
@@ -843,7 +852,7 @@ lvalues   xvalues   prvalues
 C++98 rvalues heißen prvalues in C++11. Somit kann der Leser nun nach Einführung 
 der prvalues jedes Auftreten von rvalue in den voherigen Kapiteln mit prvalue ersetzen.
 
-\vspace{12pt}
+\vspace{25pt}
 \textbf{Aus Funktionen hinausmoven}
 
 Man kann auch aus Funktionen hinausmoven.
@@ -1026,7 +1035,7 @@ template \texttt{<}typename T\texttt{>}
 
 void foo(T\&\&);
 
-T\&\& ist in diesem Fall nicht eine Rvalue Referenz, sondern eine forwarding reference.
+T\&\& ist in diesem Fall nicht eine Rvalue-Referenz, sondern eine forwarding reference.
 
 Es kann auch an lvalues gebunden werden.
 
@@ -1046,7 +1055,7 @@ foo(a); // T ist unique\_ptr\texttt{<}Form\texttt{>}\&,
 
 \parindent=0pt
 Wird also eine Lvalue als Argument übergeben, so wird die forwarding reference 
-zu einer entsprechenden Lvalue Referenz. Wird eine Rvalue übergeben, so wird die 
+zu einer entsprechenden Lvalue-Referenz. Wird eine Rvalue übergeben, so wird die 
 forwarding reference zu der entsprecheneden Rvalue Referenz.
 
 Der Typ T wird abgeleitet und so entstehen invalide Typen aus Referenzen zu Referenzen.
@@ -1094,14 +1103,14 @@ return static\_cast\texttt{<}typename std::remove\_reference\texttt{<}T\texttt{>
 
 move akzupetiert jede Art von Parameter dank der forwarding reference T\&\&.
 
-move gibt eine Rvalue Referenz zurück.
+move gibt eine Rvalue-Referenz zurück.
 
 Der Einsatz der Metafunktion std::remove\_reference ist nötig, denn für Lvalues 
 vom Typ X wäre der Rückgabetyp X\& \&\&, welche zu X\& zusammenfallen würde. 
-Da t, wie jede Referenz, eine Lvalue ist, aber wir eine Rvalue Referenz an t binden 
+Da t, wie jede Referenz, eine Lvalue ist, aber wir eine Rvalue-Referenz an t binden 
 wollen, muss t explizit zum korrekten Rückgabetyp gecasted werden. 
 
-Der Aufruf einer Funktion, welche eine Rvalue Referenz zurückgimt, wie zum Beispiel 
+Der Aufruf einer Funktion, welche eine Rvalue-Referenz zurückgimt, wie zum Beispiel 
 std::move, ist eine xvalue.
 
 \vspace{12pt}
@@ -1248,7 +1257,6 @@ return std::shared\_ptr\texttt{<}A\texttt{>}(new A(std::forward\texttt{<}X\&\tex
 \parindent=0pt
 \}
 
-\vspace{25pt}
 X\& std::forward(X\& a)
 
 \{    
@@ -1425,6 +1433,168 @@ ob ein Move von dem Quellobjekt werfen könnte (nicht als noexcept deklarierter
 Move-Konstruktor oder Move-Zuweisungsoperator). Ist der Move-Konstruktor und Move-Zuweisungsoperator 
 also nicht noexcept, so werden Standardbibliothekscontainer nicht von der nutzerimplementierten 
 Move-Semantik Gebrauch machen, sondern stattdessen kopieren.
+
+\vspace{12pt}
+\emph{Anwendung}
+
+Die Move-Semantik findet an vielen Stellen Anwendung.
+
+Dazu ein paar Beispiele:
+
+\vspace{12pt}
+std::vector\texttt{<}int\texttt{>} f() \{    
+
+\parindent=14pt
+std::vector\texttt{<}int\texttt{>} v\{ 1, 2, 3, 4 \};    
+
+return v;
+
+\}
+
+\vspace{12pt}
+\parindent=0pt
+Die Funktion f gibt einen std::vector\texttt{<}int\texttt{>} per value zurück.
+
+Dabei wird in C++11 keine unnötige Kopie im Rückgabetyp erzeugt.
+
+Stattdessen wird die lokale Variable v implizit aus der Funktion hinausgemoved.
+
+Dies geschieht auch für andere Typen, die gemoved werden können.
+
+\vspace{77pt}
+In modernem C++-Code sieht man in Konstruktoren häufig folgendes Muster:
+
+\vspace{12pt}
+class MyClass \{
+
+public:    
+
+\parindent=14pt
+explicit MyClass(SomeType v)        
+
+\parindent=28pt
+: v\_(std::move(v)) \{ \}
+
+\parindent=0pt
+private:    
+
+\parindent=14pt
+SomeType v\_;
+
+\parindent=0pt
+\};
+
+\vspace{12pt}
+Im Konstruktor wird ein Objekt vom Typ SomeType per Wert angenommen.
+
+Anschließend wird von dem Parameter v in das Datenmitglied v\_ gemoved.
+
+Ist das Argument, welches an den Konstruktor übergeben wird eine Lvalue, so wird 
+es in den Parameter v kopiert und dann in v\_ gemoved. Dies ist nicht ineffizient, 
+da Lvalues ohnehin kopiert werden müssten, die Lvalue zu modifizieren würde den 
+Aufrufer sicher überraschen.
+
+Ist das Argument, welches an den Konstruktor übergeben wird eine Rvalue, so wird 
+es in den Parameter v gemoved und anschließend in v\_ gemoved.
+
+Der Vorteil dieses Musters ist es, dass man nicht zwischen L- und Rvalues unterscheiden 
+muss und dennoch effizenter Code generiert wird.
+
+Ansonsten müsste man für jede mögliche Kombination an L-Rvalueness der Argumente 
+einen eigenen Konstruktor schreiben, was zu einer kombinatorischen Explosion führen 
+würde.
+
+Alternativ könnte man den Konstruktor auch als Template definieren, welches mit 
+forwarding references arbeitet und somit unabhängig von L-Rvalueness der Argumente 
+mit std::forward immer das richtige tut. Allerdings müsste man dann den Konstruktor 
+in einer Headerdatei definieren, was zu erhöhter Kompilierzeit führt, sofern 
+die Headerdatei von mehr als einer Quelldatei inkludiert wird. Daneben müsste 
+man sich auch möglicherweise darüber Gedanken machen die Template-Typ-Parameter 
+mit Hilfe von Techniken wie SFINAE (Substitution failure is not an error, siehe 
+auch std::enable\_if) zu beschränken, da C++ noch keine Concepts bietet (siehe 
+Concepts Technical Specification). Ein Ansatz mit std::enable\_if ist auch gerade 
+bei Konstruktoren nicht so schön, da man enable\_if nicht als Rückgabetyp nutzen 
+kann, somit müsste man es als Standardtyp für einen Template-Typ-Parameter definieren, 
+welches der Nutzer dann allerdings mit Unsinn explizit instanziieren kann und so 
+das enable\_if vollkommen aushebeln kann. Somit ist die Vorgehensweise aus obigen 
+Codebeispiel vorzuziehen, da diese wesentlich simpler ist.
+
+Es sei allerdings anzumerken, dass man für Mitgliedsfunktionen, wie zum Beispiel 
+Settern es generell vorziehen sollte explizit mit L-Value und Rvalue-Referenzen 
+zu überladen.
+
+Für Lvalues würde das Argument in den Parameter kopiert werden, dies kann potenziell 
+teurer sein, als es mit dem Kopierzuweisungsoperator direkt in das Datenmitglied 
+zu kopieren. Ist der String im Datenmitglied zum Beispiel groß genug um den im 
+Argument zu halten, so braucht man keine Allokation von dynamischen Speicher für 
+das Kopieren. Der Parameter würde aber, wenn per Wert angenommen wird immer einen 
+komplett neuen String allokieren, dies ist ineffizient. Bei Konstruktoren ist das 
+nicht ineffizient, da das Objekt mit dem Konstruktor erstellt wird und es somit 
+keine Puffer in den Datenmitgliedern geben kann, die wiederverwertet werden könnten 
+(außer eines der Datenmitglieder ist eine Referenz auf ein Objekt außerhalb der 
+zu erstellenden Instanz). Bei Settern ist eine kombinatorische Explosion, im Gegensatz 
+zu Konstruktoren, typischerweise nicht gegeben, da nur ein einzelnes, oder wenige 
+Argumente angenommen werden.
+
+\vspace{38pt}
+\emph{Fazit}
+
+Die C++11-Move-Semantik ist eines der Erkennungsmerkmale von modernem C++. Die 
+Move-Semantik ist für eine Sprache, die, wie C++, bis zu sehr hohe Laufzeitperformance 
+bieten will absolut essentiell. Das Anfertigen von unnötigen Kopien, wie es vor 
+C++11 geschah, ist für eine Programmiersprache, die Ansprüche wie C++ hat, nicht 
+akzeptabel. Die Notwendigkeit für Unterstützung von Move-Semantik durch die Kernsprache 
+war schon lange erkennbar. Indizien dafür sind zum Beispiel Optimierungen, wie 
+Copy Ellision, die alle bekannteren Compiler vornehmen. Dabei werden unnötige 
+Kopien beim Zurückgeben von lokalen Variablen aus Funktionen wegoptimiert. Analog 
+dazu werden die lokalen Variablen in C++11 aus der Funktion implizit herausgemoved, 
+sofern sie movebar sind. Ist ein Typ nur kopierbar, so muss der Compiler allerdings 
+nach wie vor keine Copy Ellision vornehmen, im C++17-Standard wird dies allerdings 
+Pflicht werden. 
+
+Ein weiteres Indiz für die Notwendigkeit von Kernsprachenunterstützung für Move-Semantik 
+ist, man begann mit std::swap Move-Semantik zu emulieren.
+
+\vspace{12pt}
+void f(std::vector\texttt{<}std::string\texttt{>} v\_\&)
+
+\{    
+
+\parindent=14pt
+std::vector\texttt{<}std::string\texttt{>} v;    
+
+using std::swap;    
+
+\parindent=28pt
+swap(v\_, v);    
+
+\parindent=14pt
+// do something with v
+
+\parindent=0pt
+\}
+
+\vspace{12pt}
+Im obigen Codebeispiel wird ein leerer vector v erstellt, um diesen mit dem an 
+welchen die Referenz v\_ gebunden ist zu swappen. So werden effektiv, wie bei C++11 
+Move-Semantik die Ressourcen von dem vector an den v\_ gebunden ist gestohlen. 
+Natürlich erfordert dies, dass die Ressourcen, die das Objekt besitzt an welches 
+die Referenz gebunden ist, nicht mehr gebraucht werden. Aber wenn der Programmierer 
+eine Funktion wie f aufruft, die eine non-const Referenz im Parameter hat, geht 
+er ohnehin davon aus, dass die Funktion das Argument modifiziert.
+
+Dank der C++11-Move-Semantik sind nun solche Workarounds, um unnötige Kopien zu 
+vermeiden, nicht mehr nötig.
+
+Es sei noch angemerkt, dass die Move-Semantik an sich kein neues Konzept ist, da 
+der Typ std::auto\_ptr bereits in C++98 Move-Semantik implementiert, lediglich 
+die Unterstützung der Move-Semantik durch die Kernsprache ist in C++11 neu. Wie 
+aus diesem Dokument hervorgeht ist der Umgang mit std::auto\_ptr durchaus gefährlich, 
+was ein weiteres Indiz für die Notwendigkeit der C++11-Move-Semantik ist. Der 
+Typ std::auto\_ptr ist seit C++11 deprecated und wird mit dem C++17-Sprachstandard 
+aus der Standardbibliothek entfernt, stattdessen wird empfohlen std::unique\_ptr 
+zu nehmen. Somit ist die Einführung der C++11-Move-Semantik insgesamt als Gewinn 
+zu betrachten, wobei sie auch nicht verzichtbar gewesen wäre.
 
 \vspace{12pt}
 \emph{Quellenangaben}
